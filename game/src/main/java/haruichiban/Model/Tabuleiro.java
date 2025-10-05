@@ -149,13 +149,13 @@ public class Tabuleiro {
                     return false;
                 }
 
-                if (getCelula(linhaOrigem, colunaOrigem+1)==0){
-                    setCelula(linhaOrigem, colunaOrigem+1, nenufar);
+                if (getCelula(linhaOrigem, colunaOrigem + 1) == 0) {
+                    setCelula(linhaOrigem, colunaOrigem + 1, nenufar);
                     setCelula(linhaOrigem, colunaOrigem, 0);
                     return true;
-                }else{
-                    if (moverNenufar(linhaOrigem, colunaOrigem+1, direcaoMovimento)) {
-                        setCelula(linhaOrigem, colunaOrigem+1, nenufar);
+                } else {
+                    if (moverNenufar(linhaOrigem, colunaOrigem + 1, direcaoMovimento)) {
+                        setCelula(linhaOrigem, colunaOrigem + 1, nenufar);
                         setCelula(linhaOrigem, colunaOrigem, 0);
                         return true;
                     } else {
@@ -168,13 +168,13 @@ public class Tabuleiro {
                     return false;
                 }
 
-                if (getCelula(linhaOrigem, colunaOrigem-1)==0){
-                    setCelula(linhaOrigem, colunaOrigem-1, nenufar);
+                if (getCelula(linhaOrigem, colunaOrigem - 1) == 0) {
+                    setCelula(linhaOrigem, colunaOrigem - 1, nenufar);
                     setCelula(linhaOrigem, colunaOrigem, 0);
                     return true;
-                }else{
-                    if (moverNenufar(linhaOrigem, colunaOrigem-1, direcaoMovimento)) {
-                        setCelula(linhaOrigem, colunaOrigem-1, nenufar);
+                } else {
+                    if (moverNenufar(linhaOrigem, colunaOrigem - 1, direcaoMovimento)) {
+                        setCelula(linhaOrigem, colunaOrigem - 1, nenufar);
                         setCelula(linhaOrigem, colunaOrigem, 0);
                         return true;
                     } else {
@@ -182,38 +182,37 @@ public class Tabuleiro {
                     }
                 }
 
-              
-                case 'C': // Cima (FRENTE) - DIMINUI LINHA
-                if (!posicaoValida(linhaOrigem - 1, colunaOrigem)) {  // ✅ CORRIGIDO!
+            case 'C': // Cima (FRENTE) - DIMINUI LINHA
+                if (!posicaoValida(linhaOrigem - 1, colunaOrigem)) { // ✅ CORRIGIDO!
                     return false;
                 }
-    
-                if (getCelula(linhaOrigem-1, colunaOrigem) == 0) {   // ✅ CORRIGIDO!
-                    setCelula(linhaOrigem-1, colunaOrigem, nenufar);
+
+                if (getCelula(linhaOrigem - 1, colunaOrigem) == 0) { // ✅ CORRIGIDO!
+                    setCelula(linhaOrigem - 1, colunaOrigem, nenufar);
                     setCelula(linhaOrigem, colunaOrigem, 0);
                     return true;
                 } else {
-                    if (moverNenufar(linhaOrigem-1, colunaOrigem, direcaoMovimento)) {
-                        setCelula(linhaOrigem-1, colunaOrigem, nenufar);
+                    if (moverNenufar(linhaOrigem - 1, colunaOrigem, direcaoMovimento)) {
+                        setCelula(linhaOrigem - 1, colunaOrigem, nenufar);
                         setCelula(linhaOrigem, colunaOrigem, 0);
                         return true;
                     } else {
                         return false;
                     }
                 }
-                    
+
             case 'B': // Baixo (TRÁS) - AUMENTA LINHA
-                if (!posicaoValida(linhaOrigem + 1, colunaOrigem)) {  
+                if (!posicaoValida(linhaOrigem + 1, colunaOrigem)) {
                     return false;
                 }
-    
-                if (getCelula(linhaOrigem+1, colunaOrigem) == 0) {   
-                    setCelula(linhaOrigem+1, colunaOrigem, nenufar);
+
+                if (getCelula(linhaOrigem + 1, colunaOrigem) == 0) {
+                    setCelula(linhaOrigem + 1, colunaOrigem, nenufar);
                     setCelula(linhaOrigem, colunaOrigem, 0);
                     return true;
                 } else {
-                    if (moverNenufar(linhaOrigem+1, colunaOrigem, direcaoMovimento)) {
-                        setCelula(linhaOrigem+1, colunaOrigem, nenufar);
+                    if (moverNenufar(linhaOrigem + 1, colunaOrigem, direcaoMovimento)) {
+                        setCelula(linhaOrigem + 1, colunaOrigem, nenufar);
                         setCelula(linhaOrigem, colunaOrigem, 0);
                         return true;
                     } else {
@@ -281,4 +280,74 @@ public class Tabuleiro {
             }
         }
     }
+
+    public boolean encontrouQuadradoCompleto() {
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                int valor = tabuleiro[i][j];
+                if ((valor == 7 || valor == 8) && // Só flores
+                        valor == tabuleiro[i][j + 1] &&
+                        valor == tabuleiro[i + 1][j] &&
+                        valor == tabuleiro[i + 1][j + 1]) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean encontrarlinhaHorizontal() {
+        // Linha de 5
+        for (int i = 0; i < 5; i++) {
+            int valorColuna1 = tabuleiro[i][0];
+            int valorColuna2 = tabuleiro[i][1];
+            if ((valorColuna1 == 7 || valorColuna1 == 8) &&
+                    valorColuna1 == tabuleiro[i][1] &&
+                    valorColuna1 == tabuleiro[i][2] &&
+                    valorColuna1 == tabuleiro[i][3] &&
+                    valorColuna1 == tabuleiro[i][4]) {
+                return true;
+            } else if ((valorColuna1 == 7 || valorColuna1 == 8) &&
+                    valorColuna1 == tabuleiro[i][1] &&
+                    valorColuna1 == tabuleiro[i][2] &&
+                    valorColuna1 == tabuleiro[i][3]) {
+                return true;
+            } else if ((valorColuna2 == 7 || valorColuna2 == 8) &&
+                    valorColuna2 == tabuleiro[i][2] &&
+                    valorColuna2 == tabuleiro[i][3] &&
+                    valorColuna2 == tabuleiro[i][4]) {
+                return true;
+            }
+        }
+        return false;
+
+    }
+
+    public boolean encontrarlinhaVertical() {
+        // Linha de 5
+        for (int i = 0; i < 5; i++) {
+            int valorLinha1 = tabuleiro[0][i];
+            int valorLinha2 = tabuleiro[1][i];
+            if ((valorLinha1 == 7 || valorLinha1 == 8) &&
+                    valorLinha1 == tabuleiro[1][i] &&
+                    valorLinha1 == tabuleiro[2][i] &&
+                    valorLinha1 == tabuleiro[3][i] &&
+                    valorLinha1 == tabuleiro[4][i]) {
+                return true;
+            } else if ((valorLinha1 == 7 || valorLinha1 == 8) &&
+                    valorLinha1 == tabuleiro[1][i] &&
+                    valorLinha1 == tabuleiro[2][i] &&
+                    valorLinha1 == tabuleiro[3][i]) {
+                return true;
+            } else if ((valorLinha2 == 7 || valorLinha2 == 8) &&
+                    valorLinha2 == tabuleiro[2][i] &&
+                    valorLinha2 == tabuleiro[3][i] &&
+                    valorLinha2 == tabuleiro[4][i]) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
 }

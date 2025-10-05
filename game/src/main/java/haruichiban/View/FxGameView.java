@@ -262,7 +262,7 @@ public class FxGameView implements GameView {
             origemL = l; origemC = c;
             lblMsg.setText("Origem: (" + l + "," + c + "). Selecione um destino adjacente.");
         } else {
-            controller.moverNenufar(origemL, origemC, 'F');
+            controller.moverNenufar(origemL, origemC, 'D');
             origemL = origemC = null;
         }
     }
