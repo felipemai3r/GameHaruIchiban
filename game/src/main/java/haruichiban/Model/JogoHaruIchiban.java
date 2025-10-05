@@ -157,35 +157,52 @@ public class JogoHaruIchiban {
     
     public boolean selecionarNenufarEscuro(int linha, int coluna) {
         if (faseAtual != FaseJogo.SELECAO_NENUFAR_ESCURO) return false;
-        
-        if (!tabuleiro.podeColocarFlor(linha, coluna)) {
-            mensagemEstado = "Não pode selecionar esta posição!";
+
+        if (!tabuleiro.posicaoValida(linha, coluna)) {
+            mensagemEstado = "Posição inválida.";
             return false;
         }
-        
+
+        int cel = tabuleiro.getCelula(linha, coluna);
+
+        // Só pode escolher NENÚFAR CLARO VAZIO (3).
+        // Nunca permitir sobre água (0), sapo (5/6) ou flor (7/8).
+        if (cel != 3) {
+            if (cel == 5 || cel == 6) {
+                mensagemEstado = "Há um sapo aqui. Mova-o primeiro para um nenúfar vazio.";
+            } else if (cel == 7 || cel == 8) {
+                mensagemEstado = "Já existe uma flor aqui. Selecione um nenúfar claro vazio.";
+            } else {
+                mensagemEstado = "Selecione um nenúfar claro vazio.";
+            }
+            return false;
+        }
+
+        // Tudo certo: marca o novo escuro
         tabuleiro.virarTodosNenufaresParaClaro();
         tabuleiro.setCelula(linha, coluna, 4);
-        
+
+        // Se restarem 2 nenúfares não floridos, remove os sapos (como estava na sua lógica)
         if (tabuleiro.contarNenufaresNaoFlorescidos() <= 2) {
             tabuleiro.removerSapos();
             mensagemEstado = "Apenas 2 nenúfares restantes! Sapos removidos.";
         }
-        
-        // TODO: Verificar padrões geométricos aqui
-        // Se formar padrão, finalizarRodada()
-        
-        // Verificar se rodada acabou (8 turnos = 8 flores por jogador)
+
+        // TODO: verificar padrões geométricos e, se houver, chamar finalizarRodada(jogadorVencedor)
+
+        // Verifica fim de rodada por esgotar flores
         if (!jogadorVermelho.temFloresDisponiveis() && !jogadorAmarelo.temFloresDisponiveis()) {
             finalizarRodada(null); // Ninguém marcou pontos
             return true;
         }
-        
+
         turnoAtual++;
         faseAtual = FaseJogo.SELECAO_FLOR;
         mensagemEstado = "Turno " + turnoAtual + ": Selecionem as flores!";
-        
+
         return true;
     }
+
     
     private void finalizarRodada(Jogador vencedorRodada) {
         if (vencedorRodada != null) {
