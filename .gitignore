@@ -1,0 +1,14 @@
+# Maven
+**/target/
+**/surefire-reports/
+
+# IDE
+**/.idea/
+**/.vscode/
+*.iml
+
+# Logs
+*.log
+
+# Build
+*.class
