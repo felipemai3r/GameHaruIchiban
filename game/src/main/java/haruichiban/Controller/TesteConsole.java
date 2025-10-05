@@ -188,13 +188,11 @@ public class TesteConsole {
         System.out.print("  Coluna (0-4): ");
         int colunaOrig = lerInteiro(0, 4);
         
-        System.out.println("\nPosição DESTINO:");
-        System.out.print("  Linha (0-4): ");
-        int linhaDest = lerInteiro(0, 4);
-        System.out.print("  Coluna (0-4): ");
-        int colunaDest = lerInteiro(0, 4);
+        System.out.println("\nDireção de DESTINO:");
+        System.out.print("  Direção (F=frente, T=tras, E=esquerda, D=direita): ");
+        char direcao = scanner.nextLine().toUpperCase().charAt(0);
         
-        if (!jogo.executarMovimentoNenufar(linhaOrig, colunaOrig, linhaDest, colunaDest)) {
+        if (!jogo.executarMovimentoNenufar(linhaOrig, colunaOrig, direcao)) {
             System.out.println("❌ " + jogo.getMensagemEstado());
             System.out.println("Tente novamente...");
         } else {

@@ -49,8 +49,9 @@ public class GameController {
         }
     }
     
-    public void moverNenufar(int linhaOrig, int colunaOrig, int linhaDest, int colunaDest) {
-        if (jogo.executarMovimentoNenufar(linhaOrig, colunaOrig, linhaDest, colunaDest)) {
+    public void moverNenufar(int linhaOrig, int colunaOrig, char direcao) {
+
+        if (jogo.executarMovimentoNenufar(linhaOrig, colunaOrig, direcao)) {
             view.atualizarTela(jogo);
         } else {
             view.mostrarErro(jogo.getMensagemEstado());

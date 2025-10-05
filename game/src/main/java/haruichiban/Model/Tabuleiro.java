@@ -18,7 +18,7 @@ public class Tabuleiro {
      * 8 - nenúfar claro com flor amarela
      */
     private int[][] tabuleiro = new int[5][5];
-    
+
     public void iniciarTabuleiro() {
         // Limpar tudo primeiro
         for (int i = 0; i < 5; i++) {
@@ -26,7 +26,7 @@ public class Tabuleiro {
                 tabuleiro[i][j] = 0;
             }
         }
-        
+
         // Configuração inicial
         tabuleiro[0][0] = 3;
         tabuleiro[0][2] = 3;
@@ -49,24 +49,24 @@ public class Tabuleiro {
         tabuleiro[4][2] = 3;
         tabuleiro[4][4] = 3;
     }
-    
+
     public int getCelula(int linha, int coluna) {
         if (posicaoValida(linha, coluna)) {
             return this.tabuleiro[linha][coluna];
         }
         return -1;
     }
-    
+
     public void setCelula(int linha, int coluna, int valor) {
         if (posicaoValida(linha, coluna)) {
             this.tabuleiro[linha][coluna] = valor;
         }
     }
-    
+
     public boolean posicaoValida(int linha, int coluna) {
         return linha >= 0 && linha < 5 && coluna >= 0 && coluna < 5;
     }
-    
+
     public void verTabuleiro() {
         System.out.println("=== TABULEIRO ===");
         for (int i = 0; i < tabuleiro.length; i++) {
@@ -77,7 +77,7 @@ public class Tabuleiro {
         }
         System.out.println("================");
     }
-    
+
     public Posicao encontrarNenufarEscuro() {
         for (int i = 0; i < 5; i++) {
             for (int j = 0; j < 5; j++) {
@@ -88,7 +88,7 @@ public class Tabuleiro {
         }
         return null;
     }
-    
+
     public boolean podeColocarFlor(int linha, int coluna) {
         int valor = getCelula(linha, coluna);
         return valor == 3 || valor == 4 || valor == 5 || valor == 6;
@@ -99,64 +99,133 @@ public class Tabuleiro {
         if (!podeColocarFlor(linha, coluna)) {
             return false;
         }
-        
+
         int novoValor = (flor.getCor() == CorJogador.VERMELHO) ? 7 : 8;
         setCelula(linha, coluna, novoValor);
-        
+
         return true;
     }
-    
+
     public boolean temSapo(int linha, int coluna) {
         int valor = getCelula(linha, coluna);
         return valor == 5 || valor == 6;
     }
-    
+
     public CorJogador getCorSapo(int linha, int coluna) {
         int valor = getCelula(linha, coluna);
-        if (valor == 5) return CorJogador.VERMELHO;
-        if (valor == 6) return CorJogador.AMARELO;
+        if (valor == 5)
+            return CorJogador.VERMELHO;
+        if (valor == 6)
+            return CorJogador.AMARELO;
         return null;
     }
-    
-    public boolean moverSapo(int linhaOrigem, int colunaOrigem, 
-                            int linhaDestino, int colunaDestino) {
+
+    public boolean moverSapo(int linhaOrigem, int colunaOrigem,
+            int linhaDestino, int colunaDestino) {
         if (!temSapo(linhaOrigem, colunaOrigem)) {
             return false;
         }
-        
+
         int valorDestino = getCelula(linhaDestino, colunaDestino);
         if (valorDestino != 3) {
             return false;
         }
-        
+
         int valorSapo = getCelula(linhaOrigem, colunaOrigem);
         setCelula(linhaDestino, colunaDestino, valorSapo);
         setCelula(linhaOrigem, colunaOrigem, 3);
-        
+
         return true;
     }
+
+    // Move o nenúfar se estiver adjacente (cima, baixo, esquerda, direita)
+    public boolean moverNenufar(int linhaOrigem, int colunaOrigem, char direcaoMovimento) {
+
+        int nenufar = getCelula(linhaOrigem, colunaOrigem);
+
+        switch (direcaoMovimento) {
+            case 'D': // Direita
+                if (!posicaoValida(linhaOrigem, colunaOrigem + 1)) {
+                    return false;
+                }
+
+                if (getCelula(linhaOrigem, colunaOrigem+1)==0){
+                    setCelula(linhaOrigem, colunaOrigem+1, nenufar);
+                    setCelula(linhaOrigem, colunaOrigem, 0);
+                    return true;
+                }else{
+                    if (moverNenufar(linhaOrigem, colunaOrigem+1, direcaoMovimento)) {
+                        setCelula(linhaOrigem, colunaOrigem+1, nenufar);
+                        setCelula(linhaOrigem, colunaOrigem, 0);
+                        return true;
+                    } else {
+                        return false; // Não conseguiu mover
+                    }
+                }
+
+            case 'E': // Esquerda
+                if (!posicaoValida(linhaOrigem, colunaOrigem - 1)) {
+                    return false;
+                }
+
+                if (getCelula(linhaOrigem, colunaOrigem-1)==0){
+                    setCelula(linhaOrigem, colunaOrigem-1, nenufar);
+                    setCelula(linhaOrigem, colunaOrigem, 0);
+                    return true;
+                }else{
+                    if (moverNenufar(linhaOrigem, colunaOrigem-1, direcaoMovimento)) {
+                        setCelula(linhaOrigem, colunaOrigem-1, nenufar);
+                        setCelula(linhaOrigem, colunaOrigem, 0);
+                        return true;
+                    } else {
+                        return false; // Não conseguiu mover
+                    }
+                }
+
+              
+                case 'C': // Cima (FRENTE) - DIMINUI LINHA
+                if (!posicaoValida(linhaOrigem - 1, colunaOrigem)) {  // ✅ CORRIGIDO!
+                    return false;
+                }
     
-    public boolean moverNenufar(int linhaOrigem, int colunaOrigem,
-                               int linhaDestino, int colunaDestino) {
-        int diffLinha = Math.abs(linhaDestino - linhaOrigem);
-        int diffColuna = Math.abs(colunaDestino - colunaOrigem);
-        
-        if (!((diffLinha == 1 && diffColuna == 0) || 
-              (diffLinha == 0 && diffColuna == 1))) {
-            return false;
+                if (getCelula(linhaOrigem-1, colunaOrigem) == 0) {   // ✅ CORRIGIDO!
+                    setCelula(linhaOrigem-1, colunaOrigem, nenufar);
+                    setCelula(linhaOrigem, colunaOrigem, 0);
+                    return true;
+                } else {
+                    if (moverNenufar(linhaOrigem-1, colunaOrigem, direcaoMovimento)) {
+                        setCelula(linhaOrigem-1, colunaOrigem, nenufar);
+                        setCelula(linhaOrigem, colunaOrigem, 0);
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+                    
+            case 'B': // Baixo (TRÁS) - AUMENTA LINHA
+                if (!posicaoValida(linhaOrigem + 1, colunaOrigem)) {  
+                    return false;
+                }
+    
+                if (getCelula(linhaOrigem+1, colunaOrigem) == 0) {   
+                    setCelula(linhaOrigem+1, colunaOrigem, nenufar);
+                    setCelula(linhaOrigem, colunaOrigem, 0);
+                    return true;
+                } else {
+                    if (moverNenufar(linhaOrigem+1, colunaOrigem, direcaoMovimento)) {
+                        setCelula(linhaOrigem+1, colunaOrigem, nenufar);
+                        setCelula(linhaOrigem, colunaOrigem, 0);
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+            default:
+                break;
         }
-        
-        if (!posicaoValida(linhaDestino, colunaDestino)) {
-            return false;
-        }
-        
-        int temp = tabuleiro[linhaOrigem][colunaOrigem];
-        tabuleiro[linhaOrigem][colunaOrigem] = tabuleiro[linhaDestino][colunaDestino];
-        tabuleiro[linhaDestino][colunaDestino] = temp;
-        
-        return true;
+        return false;
     }
-    
+
     public void virarTodosNenufaresParaClaro() {
         for (int i = 0; i < 5; i++) {
             for (int j = 0; j < 5; j++) {
@@ -166,7 +235,7 @@ public class Tabuleiro {
             }
         }
     }
-    
+
     public int contarNenufaresNaoFlorescidos() {
         int count = 0;
         for (int i = 0; i < 5; i++) {
@@ -179,7 +248,7 @@ public class Tabuleiro {
         }
         return count;
     }
-    
+
     public List<Posicao> encontrarSapos() {
         List<Posicao> sapos = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
@@ -191,7 +260,7 @@ public class Tabuleiro {
         }
         return sapos;
     }
-    
+
     public void removerSapos() {
         for (int i = 0; i < 5; i++) {
             for (int j = 0; j < 5; j++) {
@@ -201,7 +270,7 @@ public class Tabuleiro {
             }
         }
     }
-    
+
     public void limparFlores() {
         for (int i = 0; i < 5; i++) {
             for (int j = 0; j < 5; j++) {
