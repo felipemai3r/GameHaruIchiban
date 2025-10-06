@@ -3,6 +3,7 @@ package haruichiban.Model;
 import java.util.ArrayList;
 import java.util.List;
 import haruichiban.Model.enums.CorJogador;
+import haruichiban.Model.enums.TipoPadrao;
 
 public class Tabuleiro {
     /**
@@ -260,6 +261,17 @@ public class Tabuleiro {
         return sapos;
     }
 
+    public void limparFlores() {
+        for (int i = 0; i < 5; i++) {
+            for (int j = 0; j < 5; j++) {
+                int valor = tabuleiro[i][j];
+                if (valor == 7 || valor == 8) {
+                    tabuleiro[i][j] = 3; // Volta para nenúfar claro
+                }
+            }
+        }
+    }
+
     public void removerSapos() {
         for (int i = 0; i < 5; i++) {
             for (int j = 0; j < 5; j++) {
@@ -270,84 +282,290 @@ public class Tabuleiro {
         }
     }
 
-    public void limparFlores() {
-        for (int i = 0; i < 5; i++) {
-            for (int j = 0; j < 5; j++) {
-                int valor = tabuleiro[i][j];
-                if (valor == 7 || valor == 8) {
-                    tabuleiro[i][j] = 3;
-                }
-            }
-        }
-    }
-
-    public boolean encontrouQuadradoCompleto() {
+    public ResultadoPadrao encontrouQuadradoCompleto() {
+        ResultadoPadrao resultado = new ResultadoPadrao();
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
                 int valor = tabuleiro[i][j];
-                if ((valor == 7 || valor == 8) && // Só flores
+                if ((valor == 7 || valor == 8) &&
                         valor == tabuleiro[i][j + 1] &&
                         valor == tabuleiro[i + 1][j] &&
                         valor == tabuleiro[i + 1][j + 1]) {
-                    return true;
+
+                    CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
+                    resultado.setEncontrou(true);
+                    resultado.setCorVencedor(cor);
+                    resultado.setTipo(TipoPadrao.QUADRADO_2X2);
+                    resultado.setPontuacao(1);
+                    return resultado;
                 }
             }
         }
-        return false;
+        return resultado;
     }
 
-    public boolean encontrarlinhaHorizontal() {
-        // Linha de 5
+    public ResultadoPadrao encontrarLinhaHorizontal() {
+        ResultadoPadrao resultado = new ResultadoPadrao();
+        // Linha de 5 flores (5 pontos)
         for (int i = 0; i < 5; i++) {
-            int valorColuna1 = tabuleiro[i][0];
-            int valorColuna2 = tabuleiro[i][1];
-            if ((valorColuna1 == 7 || valorColuna1 == 8) &&
-                    valorColuna1 == tabuleiro[i][1] &&
-                    valorColuna1 == tabuleiro[i][2] &&
-                    valorColuna1 == tabuleiro[i][3] &&
-                    valorColuna1 == tabuleiro[i][4]) {
-                return true;
-            } else if ((valorColuna1 == 7 || valorColuna1 == 8) &&
-                    valorColuna1 == tabuleiro[i][1] &&
-                    valorColuna1 == tabuleiro[i][2] &&
-                    valorColuna1 == tabuleiro[i][3]) {
-                return true;
-            } else if ((valorColuna2 == 7 || valorColuna2 == 8) &&
-                    valorColuna2 == tabuleiro[i][2] &&
-                    valorColuna2 == tabuleiro[i][3] &&
-                    valorColuna2 == tabuleiro[i][4]) {
-                return true;
-            }
-        }
-        return false;
+            int valor = tabuleiro[i][0];
+            if ((valor == 7 || valor == 8) &&
+                    valor == tabuleiro[i][1] &&
+                    valor == tabuleiro[i][2] &&
+                    valor == tabuleiro[i][3] &&
+                    valor == tabuleiro[i][4]) {
 
-    }
-
-    public boolean encontrarlinhaVertical() {
-        // Linha de 5
-        for (int i = 0; i < 5; i++) {
-            int valorLinha1 = tabuleiro[0][i];
-            int valorLinha2 = tabuleiro[1][i];
-            if ((valorLinha1 == 7 || valorLinha1 == 8) &&
-                    valorLinha1 == tabuleiro[1][i] &&
-                    valorLinha1 == tabuleiro[2][i] &&
-                    valorLinha1 == tabuleiro[3][i] &&
-                    valorLinha1 == tabuleiro[4][i]) {
-                return true;
-            } else if ((valorLinha1 == 7 || valorLinha1 == 8) &&
-                    valorLinha1 == tabuleiro[1][i] &&
-                    valorLinha1 == tabuleiro[2][i] &&
-                    valorLinha1 == tabuleiro[3][i]) {
-                return true;
-            } else if ((valorLinha2 == 7 || valorLinha2 == 8) &&
-                    valorLinha2 == tabuleiro[2][i] &&
-                    valorLinha2 == tabuleiro[3][i] &&
-                    valorLinha2 == tabuleiro[4][i]) {
-                return true;
+                CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
+                resultado.setEncontrou(true);
+                resultado.setCorVencedor(cor);
+                resultado.setTipo(TipoPadrao.LINHA_5);
+                resultado.setPontuacao(5);
+                return resultado;
             }
         }
 
-        return false;
+        // Linha de 4 flores - posição 0-3 (2 pontos)
+        for (int i = 0; i < 5; i++) {
+            int valor = tabuleiro[i][0];
+            if ((valor == 7 || valor == 8) &&
+                    valor == tabuleiro[i][1] &&
+                    valor == tabuleiro[i][2] &&
+                    valor == tabuleiro[i][3]) {
+
+                CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
+                resultado.setEncontrou(true);
+                resultado.setCorVencedor(cor);
+                resultado.setTipo(TipoPadrao.LINHA_HORIZONTAL_4);
+                resultado.setPontuacao(2);
+                return resultado;
+            }
+        }
+
+        // Linha de 4 flores - posição 1-4 (2 pontos)
+        for (int i = 0; i < 5; i++) {
+            int valor = tabuleiro[i][1];
+            if ((valor == 7 || valor == 8) &&
+                    valor == tabuleiro[i][2] &&
+                    valor == tabuleiro[i][3] &&
+                    valor == tabuleiro[i][4]) {
+
+                CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
+               
+                resultado.setEncontrou(true);
+                resultado.setCorVencedor(cor);
+                resultado.setTipo(TipoPadrao.LINHA_HORIZONTAL_4);
+                resultado.setPontuacao(2);
+                return resultado;
+            }
+        }
+
+        return resultado;
     }
 
+    public ResultadoPadrao encontrarLinhaVertical() {
+        ResultadoPadrao resultado = new ResultadoPadrao();
+        // Linha de 5 flores (5 pontos)
+        for (int i = 0; i < 5; i++) {
+            int valor = tabuleiro[0][i];
+            if ((valor == 7 || valor == 8) &&
+                    valor == tabuleiro[1][i] &&
+                    valor == tabuleiro[2][i] &&
+                    valor == tabuleiro[3][i] &&
+                    valor == tabuleiro[4][i]) {
+
+                CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
+                resultado.setEncontrou(true);
+                resultado.setCorVencedor(cor);
+                resultado.setTipo(TipoPadrao.LINHA_5);
+                resultado.setPontuacao(5);
+                return resultado;
+            }
+        }
+
+        // Linha de 4 flores - posição 0-3 (2 pontos)
+        for (int i = 0; i < 5; i++) {
+            int valor = tabuleiro[0][i];
+            if ((valor == 7 || valor == 8) &&
+                    valor == tabuleiro[1][i] &&
+                    valor == tabuleiro[2][i] &&
+                    valor == tabuleiro[3][i]) {
+
+                CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
+                resultado.setEncontrou(true);
+                resultado.setCorVencedor(cor);
+                resultado.setTipo(TipoPadrao.LINHA_VERTICAL_4);
+                resultado.setPontuacao(2);
+                return resultado;
+            }
+        }
+
+        // Linha de 4 flores - posição 1-4 (2 pontos)
+        for (int i = 0; i < 5; i++) {
+            int valor = tabuleiro[1][i];
+            if ((valor == 7 || valor == 8) &&
+                    valor == tabuleiro[2][i] &&
+                    valor == tabuleiro[3][i] &&
+                    valor == tabuleiro[4][i]) {
+
+                CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
+               
+                resultado.setEncontrou(true);
+                resultado.setCorVencedor(cor);
+                resultado.setTipo(TipoPadrao.LINHA_VERTICAL_4);
+                resultado.setPontuacao(2);
+                return resultado;
+            }
+        }
+
+        return resultado;
+    }
+
+    public static ResultadoPadrao nenhumPadrao() {
+        return new ResultadoPadrao(false, null, null);
+    }
+
+    public ResultadoPadrao encontrarDiagonal() {
+        ResultadoPadrao resultado = new ResultadoPadrao();
+        // Diagonal principal ↘ - 5 flores
+        int valor = tabuleiro[0][0];
+        if ((valor == 7 || valor == 8) &&
+            valor == tabuleiro[1][1] &&
+            valor == tabuleiro[2][2] &&
+            valor == tabuleiro[3][3] &&
+            valor == tabuleiro[4][4]) {
+            
+            CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
+            
+            resultado.setEncontrou(true);
+            resultado.setCorVencedor(cor);
+            resultado.setTipo(TipoPadrao.LINHA_5);
+            resultado.setPontuacao(5);
+            return resultado;
+        }
+        
+        // Diagonal secundária ↙ - 5 flores
+        valor = tabuleiro[0][4];
+        if ((valor == 7 || valor == 8) &&
+            valor == tabuleiro[1][3] &&
+            valor == tabuleiro[2][2] &&
+            valor == tabuleiro[3][1] &&
+            valor == tabuleiro[4][0]) {
+            
+            CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
+            resultado.setEncontrou(true);
+            resultado.setCorVencedor(cor);
+            resultado.setTipo(TipoPadrao.LINHA_5);
+            resultado.setPontuacao(5);
+            return resultado;
+        }
+        
+        // Diagonal principal ↘ - 4 flores (0,0 a 3,3)
+        valor = tabuleiro[0][0];
+        if ((valor == 7 || valor == 8) &&
+            valor == tabuleiro[1][1] &&
+            valor == tabuleiro[2][2] &&
+            valor == tabuleiro[3][3]) {
+            
+            CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
+            resultado.setEncontrou(true);
+            resultado.setCorVencedor(cor);
+            resultado.setTipo(TipoPadrao.DIAGONAL_4);
+            resultado.setPontuacao(3);
+            return resultado;
+        }
+        
+        // Diagonal principal ↘ - 4 flores (1,1 a 4,4)
+        valor = tabuleiro[1][1];
+        if ((valor == 7 || valor == 8) &&
+            valor == tabuleiro[2][2] &&
+            valor == tabuleiro[3][3] &&
+            valor == tabuleiro[4][4]) {
+            
+            CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
+            resultado.setEncontrou(true);
+            resultado.setCorVencedor(cor);
+            resultado.setTipo(TipoPadrao.DIAGONAL_4);
+            resultado.setPontuacao(3);
+            return resultado;
+        }
+        
+        // Diagonal secundária ↙ - 4 flores (0,4 a 3,1)
+        valor = tabuleiro[0][4];
+        if ((valor == 7 || valor == 8) &&
+            valor == tabuleiro[1][3] &&
+            valor == tabuleiro[2][2] &&
+            valor == tabuleiro[3][1]) {
+            
+            CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
+            resultado.setEncontrou(true);
+            resultado.setCorVencedor(cor);
+            resultado.setTipo(TipoPadrao.DIAGONAL_4);
+            resultado.setPontuacao(3);
+            return resultado;
+        }
+        
+        // Diagonal secundária ↙ - 4 flores (1,3 a 4,0)
+        valor = tabuleiro[1][3];
+        if ((valor == 7 || valor == 8) &&
+            valor == tabuleiro[2][2] &&
+            valor == tabuleiro[3][1] &&
+            valor == tabuleiro[4][0]) {
+            
+            CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
+            resultado.setEncontrou(true);
+            resultado.setCorVencedor(cor);
+            resultado.setTipo(TipoPadrao.DIAGONAL_4);
+            resultado.setPontuacao(3);
+            return resultado;
+        }
+        
+        return resultado;
+    }
+
+    public ResultadoPadrao verificarPadroes() {
+        // Prioridade: Linha de 5 (5 pts) > Diagonal 4 (3 pts) > Linha 4 (2 pts) > Quadrado (1 pt)
+        
+        // Verificar linhas de 5 (horizontal e vertical)
+        ResultadoPadrao resultado = encontrarLinhaHorizontal();
+        if (resultado.isEncontrou() && resultado.getPontuacao() == 5) {
+            return resultado;
+        }
+        
+        resultado = encontrarLinhaVertical();
+        if (resultado.isEncontrou() && resultado.getPontuacao() == 5) {
+            return resultado;
+        }
+        
+        // Verificar diagonal de 5
+        resultado = encontrarDiagonal();
+        if (resultado.isEncontrou() && resultado.getPontuacao() == 5) {
+            return resultado;
+        }
+        
+        // Verificar diagonal de 4 (3 pontos)
+        resultado = encontrarDiagonal();
+        if (resultado.isEncontrou() && resultado.getPontuacao() == 3) {
+            return resultado;
+        }
+        
+        // Verificar linhas de 4 (2 pontos)
+        resultado = encontrarLinhaHorizontal();
+        if (resultado.isEncontrou() && resultado.getPontuacao() == 2) {
+            return resultado;
+        }
+        
+        resultado = encontrarLinhaVertical();
+        if (resultado.isEncontrou() && resultado.getPontuacao() == 2) {
+            return resultado;
+        }
+        
+        // Verificar quadrado (1 ponto)
+        resultado = encontrouQuadradoCompleto();
+        if (resultado.isEncontrou()) {
+            return resultado;
+        }
+        
+        // Nenhum padrão encontrado
+        return new ResultadoPadrao();
+    }
 }

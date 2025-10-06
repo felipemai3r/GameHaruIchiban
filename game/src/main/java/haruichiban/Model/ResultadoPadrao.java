@@ -17,7 +17,11 @@ public class ResultadoPadrao {
         this.pontuacao = tipo != null ? tipo.getPontos() : 0;
     }
 
-    
+    public ResultadoPadrao() {
+        
+    }
+
+
     public boolean isEncontrou() {
         return encontrou;
     }
