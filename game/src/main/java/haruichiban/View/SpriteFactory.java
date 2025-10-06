@@ -4,6 +4,7 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
+import haruichiban.Model.enums.CorJogador;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.image.Image;
@@ -12,8 +13,9 @@ import javafx.scene.layout.StackPane;
 
 /**
  * SpriteFactory = Abstract Factory + Singleton:
- * - cria nós (tiles) a partir do "código" da célula (0..8)
- * - carrega imagens uma única vez (cache) a partir de /haruichiban/img/
+ * - cria nós (tiles) a partir do código da célula (0..8)
+ * - cria flores genéricas e numeradas para as mãos
+ * - carrega imagens 1x (cache) de /haruichiban/img/
  */
 public class SpriteFactory {
 
@@ -23,12 +25,16 @@ public class SpriteFactory {
     private static final String BASE = "/haruichiban/img/";
     private final Map<String, Image> cache = new HashMap<>();
 
+    // tamanho base (ajustado p/ caber sem scroll)
+    private static final double TILE_SIZE = 88;
+    private static final double IMAGE_FIT = 0.88 * TILE_SIZE;
+
     private SpriteFactory() {}
 
     /** Monta um tile para o código do Tabuleiro. */
     public StackPane tileFor(int code) {
         StackPane s = new StackPane();
-        s.setPrefSize(96, 96);
+        s.setPrefSize(TILE_SIZE, TILE_SIZE);
         s.setAlignment(Pos.CENTER);
 
         switch (code) {
@@ -44,23 +50,28 @@ public class SpriteFactory {
         return s;
     }
 
-    /** Tenta a flor numerada (ex.: "flor_vermelha_5"), senão cai na genérica. */
-    public Node flowerNumberedOrDefault(String base, int valor) {
-        String name = base + valor;
-        ImageView v = imgOrNull(name);
-        if (v == null) {
-            return img(base.startsWith("flor_vermelha") ? "flor_vermelha" : "flor_amarela");
-        }
-        return v;
+    // ---------- API para as mãos ----------
+
+    /** Flor sem número (lado “virado”). */
+    public Node flowerGeneric(CorJogador cor) {
+        return img(cor == CorJogador.VERMELHO ? "flor_vermelha" : "flor_amarela");
     }
 
-    // ------------- helpers de imagem/caching -------------
+    /** Flor numerada (se não houver asset numerado, cai na genérica). */
+    public Node flowerNumbered(CorJogador cor, int valor) {
+        String base = (cor == CorJogador.VERMELHO) ? "flor_vermelha_" : "flor_amarela_";
+        ImageView v = imgOrNull(base + valor);
+        if (v != null) return v;
+        return flowerGeneric(cor);
+    }
+
+    // ---------- helpers de imagem/caching ----------
 
     private ImageView img(String name) {
         Image image = cache.computeIfAbsent(name, this::load);
         ImageView iv = new ImageView(image);
         iv.setPreserveRatio(true);
-        iv.setFitWidth(84);
+        iv.setFitWidth(IMAGE_FIT);
         return iv;
     }
 
@@ -69,7 +80,7 @@ public class SpriteFactory {
         if (image == null) return null;
         ImageView iv = new ImageView(image);
         iv.setPreserveRatio(true);
-        iv.setFitWidth(84);
+        iv.setFitWidth(IMAGE_FIT);
         return iv;
     }
 
@@ -80,7 +91,6 @@ public class SpriteFactory {
     }
 
     private Image loadNullable(String name) {
-        // tenta com e sem .png
         String[] candidates = new String[] { BASE + name, BASE + name + ".png" };
         for (String path : candidates) {
             try (InputStream in = getClass().getResourceAsStream(path)) {

@@ -14,7 +14,7 @@ public class App extends Application {
 
     @Override
     public void start(Stage stage) {
-        FxGameView view = new FxGameView(stage);
+        FxGameView view = new FxGameView(stage, getHostServices());
         GameController controller = new GameController(view);
         view.attachController(controller);
 

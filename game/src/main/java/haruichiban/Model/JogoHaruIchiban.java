@@ -14,6 +14,10 @@ public class JogoHaruIchiban {
     private String mensagemEstado;
     private int turnoAtual;
 
+    private Jogador jogadorQueCoaxou; // Jogador que ganhou o "coaxar"
+    private boolean saposRemovidos; // Para controlar se os sapos foram removidos temporariamente
+    private int saposMovidos; // Contador de sapos movidos no empate
+
     public JogoHaruIchiban(String nomeVermelho, String nomeAmarelo) {
         this.tabuleiro = new Tabuleiro();
         this.jogadorVermelho = new Jogador(nomeVermelho, CorJogador.VERMELHO);
@@ -39,8 +43,11 @@ public class JogoHaruIchiban {
         determinarJardineiros();
 
         if (jardineirJunior == null) {
-            mensagemEstado = "EMPATE! Floração automática nos sapos.";
+            // EMPATE!
+            mensagemEstado = "EMPATE! Quem coaxar primeiro move ambos os sapos!";
             floracaoAutomaticaEmpate();
+            faseAtual = FaseJogo.EMPATE_COAXAR; // Nova fase
+            saposMovidos = 0;
         } else {
             faseAtual = FaseJogo.FLORACAO_JUNIOR;
             mensagemEstado = jardineirJunior.getNome() + " é o Jardineiro Júnior.";
@@ -80,9 +87,67 @@ public class JogoHaruIchiban {
             jogadorAmarelo.usarFlorSelecionada();
         }
 
-        faseAtual = FaseJogo.MOVIMENTO_NENUFARES;
-        mensagemEstado = "Quem 'croou' primeiro move os nenúfares.";
+        // Remover os sapos temporariamente após floração
+        tabuleiro.removerSapos();
+        saposRemovidos = true;
     }
+
+    public boolean registrarCoaxar(CorJogador corJogador) {
+        if (faseAtual != FaseJogo.EMPATE_COAXAR) {
+            return false;
+        }
+        
+        jogadorQueCoaxou = (corJogador == CorJogador.VERMELHO) ? 
+                           jogadorVermelho : jogadorAmarelo;
+        
+        faseAtual = FaseJogo.MOVER_SAPOS_EMPATE;
+        mensagemEstado = jogadorQueCoaxou.getNome() + 
+                         " coaxou primeiro! Coloque o sapo VERMELHO.";
+        return true;
+    }
+
+    public boolean moverSapoEmpate(int linha, int coluna, CorJogador corSapo) {
+        if (faseAtual != FaseJogo.MOVER_SAPOS_EMPATE) {
+            return false;
+        }
+        
+        // Verificar se a posição é válida (nenúfar vazio)
+        if (!tabuleiro.posicaoValida(linha, coluna) || 
+            tabuleiro.getCelula(linha, coluna) != 3) {
+            mensagemEstado = "Posição inválida! Escolha um nenúfar vazio.";
+            return false;
+        }
+        
+        // Colocar o sapo
+        int valorSapo = (corSapo == CorJogador.VERMELHO) ? 5 : 6;
+        tabuleiro.setCelula(linha, coluna, valorSapo);
+        saposMovidos++;
+        
+        if (saposMovidos == 1) {
+            // Primeiro sapo colocado, pedir o segundo
+            mensagemEstado = jogadorQueCoaxou.getNome() + 
+                             " agora coloque o sapo AMARELO.";
+            return true;
+        } else if (saposMovidos == 2) {
+            // Ambos os sapos colocados, continuar o jogo
+            saposRemovidos = false;
+            saposMovidos = 0;
+            jogadorQueCoaxou = null;
+            
+            // Escolher aleatoriamente quem será o júnior para movimento
+            // ou permitir que o jogador que coaxou escolha
+            jardineirJunior = jogadorQueCoaxou; 
+            jardineirSenior = (jogadorQueCoaxou == jogadorVermelho) ? 
+                             jogadorAmarelo : jogadorVermelho;
+            
+            faseAtual = FaseJogo.MOVIMENTO_NENUFARES;
+            mensagemEstado = jardineirJunior.getNome() + " move os nenúfares.";
+            return true;
+        }
+        
+        return false;
+    }
+
 
     private Posicao encontrarSapo(CorJogador cor) {
         for (int i = 0; i < 5; i++) {
@@ -150,11 +215,29 @@ public class JogoHaruIchiban {
         if (faseAtual != FaseJogo.MOVIMENTO_NENUFARES)
             return false;
 
-        if (!tabuleiro.moverNenufar(linhaOrig, colunaOrig,direcao)) {
+        if (!tabuleiro.moverNenufar(linhaOrig, colunaOrig, direcao)) {
             mensagemEstado = "Movimento inválido!";
             return false;
         }
 
+        ResultadoPadrao resultado = tabuleiro.verificarPadroes();
+
+        if (resultado.isEncontrou()) {
+            // Encontrou um padrão! Adicionar pontos e verificar vitória
+            Jogador vencedor = (resultado.getCorVencedor() == CorJogador.VERMELHO)
+                    ? jogadorVermelho
+                    : jogadorAmarelo;
+
+            vencedor.adicionarPontos(resultado.getPontuacao());
+
+            mensagemEstado = vencedor.getNome() + " marcou " + resultado.getPontuacao() +
+                    " ponto(s) com " + resultado.getTipo().getDescricao() + "!";
+
+            finalizarRodada(vencedor);
+            return true;
+        }
+
+        // Se não encontrou padrão, continua o jogo normalmente
         faseAtual = FaseJogo.SELECAO_NENUFAR_ESCURO;
         mensagemEstado = jardineirSenior.getNome() + " seleciona o próximo nenúfar escuro.";
 
@@ -162,35 +245,50 @@ public class JogoHaruIchiban {
     }
 
     public boolean selecionarNenufarEscuro(int linha, int coluna) {
-        if (faseAtual != FaseJogo.SELECAO_NENUFAR_ESCURO)
-            return false;
-
-        if (!tabuleiro.podeColocarFlor(linha, coluna)) {
-            mensagemEstado = "Não pode selecionar esta posição!";
+        if (faseAtual != FaseJogo.SELECAO_NENUFAR_ESCURO) return false;
+    
+        if (!tabuleiro.posicaoValida(linha, coluna)) {
+            mensagemEstado = "Posição inválida.";
             return false;
         }
-
+    
+        int cel = tabuleiro.getCelula(linha, coluna);
+    
+        // Só pode escolher NENÚFAR CLARO VAZIO (3).
+        // Nunca permitir sobre água (0), sapo (5/6) ou flor (7/8).
+        if (cel != 3) {
+            if (cel == 5 || cel == 6) {
+                mensagemEstado = "Há um sapo aqui. Mova-o primeiro para um nenúfar vazio.";
+            } else if (cel == 7 || cel == 8) {
+                mensagemEstado = "Já existe uma flor aqui. Selecione um nenúfar claro vazio.";
+            } else {
+                mensagemEstado = "Selecione um nenúfar claro vazio.";
+            }
+            return false;
+        }
+    
+        // Tudo certo: marca o novo escuro
         tabuleiro.virarTodosNenufaresParaClaro();
         tabuleiro.setCelula(linha, coluna, 4);
-
+    
+        // Se restarem 2 nenúfares não floridos, remove os sapos (como estava na sua lógica)
         if (tabuleiro.contarNenufaresNaoFlorescidos() <= 2) {
             tabuleiro.removerSapos();
             mensagemEstado = "Apenas 2 nenúfares restantes! Sapos removidos.";
         }
-
-        // TODO: Verificar padrões geométricos aqui
-        // Se formar padrão, finalizarRodada()
-
-        // Verificar se rodada acabou (8 turnos = 8 flores por jogador)
+    
+        // TODO: verificar padrões geométricos e, se houver, chamar finalizarRodada(jogadorVencedor)
+    
+        // Verifica fim de rodada por esgotar flores
         if (!jogadorVermelho.temFloresDisponiveis() && !jogadorAmarelo.temFloresDisponiveis()) {
             finalizarRodada(null); // Ninguém marcou pontos
             return true;
         }
-
+    
         turnoAtual++;
         faseAtual = FaseJogo.SELECAO_FLOR;
         mensagemEstado = "Turno " + turnoAtual + ": Selecionem as flores!";
-
+    
         return true;
     }
 
@@ -269,5 +367,8 @@ public class JogoHaruIchiban {
 
     public int getTurnoAtual() {
         return turnoAtual;
+    }
+    public Jogador getJogadorQueCoaxou() {
+        return jogadorQueCoaxou;
     }
 }
