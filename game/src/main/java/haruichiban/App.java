@@ -6,10 +6,6 @@ import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-/**
- * Ponto de entrada da interface JavaFX.
- * Mantém o Main.java antigo para os testes de console (se quiser).
- */
 public class App extends Application {
 
     @Override
@@ -19,11 +15,11 @@ public class App extends Application {
         view.attachController(controller);
 
         Scene scene = new Scene(view.getRoot(), 1000, 720);
-        stage.setTitle("Haru Ichiban – UI (MVC)");
         stage.setScene(scene);
         stage.show();
 
-        controller.iniciarNovoJogo("Vermelho", "Amarelo");
+        // Já inicia pedindo os nomes (e criando um jogo novo)
+        view.solicitarNovoJogo(controller);
     }
 
     public static void main(String[] args) {

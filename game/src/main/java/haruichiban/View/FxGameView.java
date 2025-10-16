@@ -1,17 +1,16 @@
 package haruichiban.View;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.BiConsumer;
 
 import haruichiban.Controller.GameController;
 import haruichiban.Model.Flor;
 import haruichiban.Model.Jogador;
 import haruichiban.Model.JogoHaruIchiban;
+import haruichiban.Model.Tabuleiro;
 import haruichiban.Model.enums.CorJogador;
 import haruichiban.Model.enums.FaseJogo;
 import javafx.application.HostServices;
@@ -33,55 +32,52 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 
-/**
- * VIEW do MVC: desenha a tela e conversa apenas com o Controller.
- * Não contém regra de negócio do jogo (isso está no Model).
- */
 public class FxGameView implements GameView {
 
     private final Stage stage;
     private final HostServices hostServices;
     private final BorderPane root = new BorderPane();
 
-    // Topo (centralizado)
+    // header
     private final VBox header = new VBox();
     private final Label lblTitulo = new Label("Haru Ichiban");
     private final Button btnNovoJogo = new Button("Novo Jogo");
     private final Button btnRegras = new Button("Regras");
     private final Label lblTurno = new Label();
     private final Label lblFase = new Label();
-    private final Label lblMsg = new Label();
+    private final Label lblMsg  = new Label();
 
-    // Centro (tabuleiro)
+    // EMPATE – botões para escolher quem coaxou
+    private final Button btnCoaxV = new Button("Vermelho coaxou");
+    private final Button btnCoaxA = new Button("Amarelo coaxou");
+    private final HBox empateBox  = new HBox(8, btnCoaxV, btnCoaxA);
+
+    // centro
     private final GameBoardGrid boardGrid = new GameBoardGrid();
 
-    // Laterais: mãos
-    private static final double SIDE_WIDTH = 240;
+    // laterais
     private final VBox maoVermelhoBox = new VBox(10);
-    private final VBox maoAmareloBox = new VBox(10);
-
-    // Pontuação por lado
+    private final VBox maoAmareloBox  = new VBox(10);
     private final VBox scoreVermelhoBox = new VBox(6);
-    private final VBox scoreAmareloBox = new VBox(6);
+    private final VBox scoreAmareloBox  = new VBox(6);
 
-    // Barra inferior: ações
+    // bottom
     private final Button btnConfirmarSelecao = new Button("Confirmar seleção");
-    private final Button btnFloracaoJunior = new Button("Floração Júnior");
-    private final ToggleButton tglMoverSapo = new ToggleButton("Modo Mover Sapo");
+    private final Button btnFloracaoJunior   = new Button("Floração Júnior");
+    private final ToggleButton tglMoverSapo  = new ToggleButton("Modo Mover Sapo");
+    private final Button btnNovaRodada       = new Button("Nova Rodada"); // << NOVO
 
-    // Estado efêmero para cliques de origem/destino
-    private Integer origemL = null, origemC = null;
-
-    // Seleção de flor (por índice)
+    // estado UI (escolha de flores)
     private int idxFlorVermelho = -1;
-    private int idxFlorAmarelo = -1;
-
-    // Para destacar visualmente a seleção
+    private int idxFlorAmarelo  = -1;
     private final List<Region> cardsVermelho = new ArrayList<>();
-    private final List<Region> cardsAmarelo = new ArrayList<>();
+    private final List<Region> cardsAmarelo  = new ArrayList<>();
 
-    // containers laterais
-    private VBox leftSide, rightSide;
+    // estado UI (mover sapo manual)
+    private Integer sapoOrigR = null, sapoOrigC = null;
+
+    // estado UI (empate – próxima cor a posicionar)
+    private CorJogador empateProximaCor = null;
 
     private GameController controller;
     private JogoHaruIchiban jogo;
@@ -94,58 +90,55 @@ public class FxGameView implements GameView {
     }
 
     public void attachController(GameController controller) { this.controller = controller; }
-
     public BorderPane getRoot() { return root; }
 
-    // ----------------- GameView -----------------
-
-    @Override
-    public void atualizarTela(JogoHaruIchiban jogo) {
+    @Override public void atualizarTela(JogoHaruIchiban jogo) {
         this.jogo = jogo;
 
         lblTurno.setText("Turno: " + jogo.getTurnoAtual());
         lblFase.setText("Fase: " + jogo.getFaseAtual().getDescricao());
         lblMsg.setText(Optional.ofNullable(jogo.getMensagemEstado()).orElse(""));
 
+        // Atualiza “próxima cor” no empate olhando o tabuleiro
+        if (jogo.getFaseAtual() == FaseJogo.MOVER_SAPOS_EMPATE) {
+            empateProximaCor = detectarProximaCorEmpate(jogo.getTabuleiro());
+        } else {
+            empateProximaCor = null;
+        }
+
         boardGrid.render(jogo.getTabuleiro());
         renderMaos(jogo);
-
-        // pontuação por jogador embaixo de cada mão
         atualizarScore(scoreVermelhoBox, jogo.getJogadorVermelho());
-        atualizarScore(scoreAmareloBox, jogo.getJogadorAmarelo());
+        atualizarScore(scoreAmareloBox,  jogo.getJogadorAmarelo());
 
         habilitarAcoesPorFase(jogo.getFaseAtual());
+        configurarHoverDeMovimento(jogo.getFaseAtual());
     }
 
-    @Override
-    public void mostrarErro(String mensagem) {
+    @Override public void mostrarErro(String mensagem) {
         Alert a = new Alert(Alert.AlertType.ERROR);
+        a.setHeaderText(null);
         a.setTitle("Erro");
-        a.setHeaderText(null);
         a.setContentText(mensagem);
         a.initOwner(stage);
         a.showAndWait();
     }
 
-    @Override
-    public void mostrarMensagem(String mensagem) {
+    @Override public void mostrarMensagem(String mensagem) {
         Alert a = new Alert(Alert.AlertType.INFORMATION);
-        a.setTitle("Informação");
         a.setHeaderText(null);
+        a.setTitle("Informação");
         a.setContentText(mensagem);
         a.initOwner(stage);
         a.showAndWait();
     }
 
-    // ----------------- Layout/UX -----------------
-
+    // ----------------------- layout -----------------------
     private void montarLayoutBase() {
+        stage.setTitle("Haru Ichiban - Primeiro Vento da Primavera");
         root.setPadding(new Insets(12));
 
-        // Título + botões (esquerda), info de jogo (centro)
         lblTitulo.setFont(Font.font(null, FontWeight.BOLD, 22));
-
-        // estilo do botão "Novo Jogo" (azul/água)
         btnNovoJogo.setStyle("""
             -fx-background-color: linear-gradient(#d7ecff,#9ac6f5);
             -fx-text-fill: #083b6b;
@@ -153,7 +146,6 @@ public class FxGameView implements GameView {
             -fx-background-radius: 8;
             -fx-padding: 6 12 6 12;
         """);
-
         btnRegras.setStyle("""
             -fx-background-color: #f2f2f2;
             -fx-background-radius: 8;
@@ -167,83 +159,76 @@ public class FxGameView implements GameView {
         lblFase.setFont(Font.font(null, FontWeight.BOLD, 16));
         lblMsg.setFont(Font.font(14));
 
-        HBox linhaInfo = new HBox(20, lblTurno, lblFase);
-        linhaInfo.setAlignment(Pos.CENTER);
+        empateBox.setAlignment(Pos.CENTER);
+        btnCoaxV.setOnAction(e -> controller.registrarCoaxar(CorJogador.VERMELHO));
+        btnCoaxA.setOnAction(e -> controller.registrarCoaxar(CorJogador.AMARELO));
 
-        HBox linhaMsg = new HBox(lblMsg);
-        linhaMsg.setAlignment(Pos.CENTER);
+        VBox blocoCentralInfo = new VBox(6,
+                new HBox(20, lblTurno, lblFase) {{ setAlignment(Pos.CENTER); }},
+                new HBox(lblMsg)               {{ setAlignment(Pos.CENTER); }},
+                empateBox
+        );
 
         header.setSpacing(6);
-        header.getChildren().addAll(linhaTopo, linhaInfo, linhaMsg);
+        header.getChildren().addAll(linhaTopo, blocoCentralInfo);
         root.setTop(header);
 
-        // Centro (tabuleiro)
         StackPane center = new StackPane(boardGrid.getNode());
         center.setPadding(new Insets(8));
         root.setCenter(center);
 
-        // Lado esquerdo: mão VERMELHO + score
         TitledPane tpV = new TitledPane("Mão Vermelho", maoVermelhoBox);
         tpV.setCollapsible(false);
-        scoreVermelhoBox.setPadding(new Insets(6,0,0,0));
-        leftSide = new VBox(8, tpV, scoreVermelhoBox);
-        leftSide.setPadding(new Insets(8));
-        leftSide.setPrefWidth(SIDE_WIDTH);
-        root.setLeft(leftSide);
+        VBox left = new VBox(8, tpV, scoreVermelhoBox);
+        left.setPadding(new Insets(8));
+        left.setPrefWidth(240);
+        root.setLeft(left);
 
-        // Lado direito: mão AMARELO + score
         TitledPane tpA = new TitledPane("Mão Amarelo", maoAmareloBox);
         tpA.setCollapsible(false);
-        scoreAmareloBox.setPadding(new Insets(6,0,0,0));
-        rightSide = new VBox(8, tpA, scoreAmareloBox);
-        rightSide.setPadding(new Insets(8));
-        rightSide.setPrefWidth(SIDE_WIDTH);
-        root.setRight(rightSide);
+        VBox right = new VBox(8, tpA, scoreAmareloBox);
+        right.setPadding(new Insets(8));
+        right.setPrefWidth(240);
+        root.setRight(right);
 
-        // Barra inferior com ações
-        HBox actions = new HBox(12, btnConfirmarSelecao, btnFloracaoJunior, tglMoverSapo);
+        btnNovaRodada.setOnAction(e -> controller.iniciarNovaRodada());
+
+        HBox actions = new HBox(12, btnConfirmarSelecao, btnFloracaoJunior, tglMoverSapo, btnNovaRodada);
         actions.setAlignment(Pos.CENTER);
         actions.setPadding(new Insets(10, 0, 0, 0));
         root.setBottom(actions);
-
-        btnConfirmarSelecao.setMaxWidth(220);
-        btnFloracaoJunior.setMaxWidth(220);
-        tglMoverSapo.setMaxWidth(220);
     }
 
     private void configurarHandlersFixos() {
-        // Novo jogo
         btnNovoJogo.setOnAction(e -> solicitarNovoJogo(controller));
-
-        // Regras (abre PDF das regras via HostServices; se necessário, extrai para temp)
         btnRegras.setOnAction(e -> abrirPdfRegras());
-
-        // Floração Júnior
         btnFloracaoJunior.setOnAction(e -> controller.executarFloracaoJunior());
 
         // Clique no tabuleiro
-        boardGrid.setOnCellClick((l, c) -> {
+        boardGrid.setOnCellClick((r, c) -> {
             if (jogo == null) return;
             FaseJogo fase = jogo.getFaseAtual();
 
-            if (tglMoverSapo.isSelected()) {
-                handleMoverSapo(l, c);
+            // 1) EMPATE: colocar sapos
+            if (fase == FaseJogo.MOVER_SAPOS_EMPATE) {
+                handleEmpateClick(r, c);
                 return;
             }
 
+            // 2) Mover sapo manual (quando necessário)
+            if (tglMoverSapo.isSelected() && fase != FaseJogo.EMPATE_COAXAR) {
+                handleMoverSapoClick(r, c);
+                return;
+            }
+
+            // 3) Ações padrão por fase
             switch (fase) {
-                case SELECAO_FLOR -> mostrarMensagem(
-                        "Selecione uma flor de cada mão e clique em 'Confirmar seleção'.");
-                case FLORACAO_JUNIOR -> mostrarMensagem(
-                        "Use 'Floração Júnior'. Se houver sapo no escuro, ative 'Modo Mover Sapo'.");
-                case FLORACAO_SENIOR -> controller.executarFloracaoSenior(l, c);
-                case MOVIMENTO_NENUFARES -> handleMoverNenufar(l, c);
-                case SELECAO_NENUFAR_ESCURO -> controller.selecionarNenufarEscuro(l, c);
-                case FIM_RODADA -> mostrarMensagem("Fim da rodada. Clique em 'Novo Jogo' ou aguarde o backend.");
+                case FLORACAO_SENIOR -> controller.executarFloracaoSenior(r, c);
+                case SELECAO_NENUFAR_ESCURO -> controller.selecionarNenufarEscuro(r, c);
+                default -> { /* setas / outros fluxos */ }
             }
         });
 
-        // Confirmar seleção de flores
         btnConfirmarSelecao.setOnAction(e -> {
             if (idxFlorVermelho < 0 || idxFlorAmarelo < 0) {
                 mostrarErro("Selecione 1 flor do Vermelho e 1 do Amarelo.");
@@ -254,60 +239,125 @@ public class FxGameView implements GameView {
         });
     }
 
-    /** Fluxo de "Novo Jogo": pergunta nomes e chama o controller. */
-    public void solicitarNovoJogo(GameController controller) {
-        TextInputDialog d1 = new TextInputDialog("Vermelho");
-        d1.setHeaderText("Nome do Jogador Vermelho");
-        String nV = d1.showAndWait().orElse("Vermelho");
-
-        TextInputDialog d2 = new TextInputDialog("Amarelo");
-        d2.setHeaderText("Nome do Jogador Amarelo");
-        String nA = d2.showAndWait().orElse("Amarelo");
-
-        controller.iniciarNovoJogo(nV, nA);
-        idxFlorVermelho = idxFlorAmarelo = -1;
-        origemL = origemC = null;
-        tglMoverSapo.setSelected(false);
-    }
-
-    private void habilitarAcoesPorFase(FaseJogo fase) {
-        boolean selecao = fase == FaseJogo.SELECAO_FLOR;
-        maoVermelhoBox.setDisable(!selecao);
-        maoAmareloBox.setDisable(!selecao);
-        btnConfirmarSelecao.setDisable(!selecao);
-
-        btnFloracaoJunior.setDisable(fase != FaseJogo.FLORACAO_JUNIOR);
-
-        if (fase != FaseJogo.MOVIMENTO_NENUFARES) {
-            origemL = origemC = null;
+    // ------------------- setas e movimento por direção -------------------
+    private void configurarHoverDeMovimento(FaseJogo fase) {
+        if (fase == FaseJogo.MOVIMENTO_NENUFARES) {
+            boardGrid.setOnCellHover(onEnterMostrarSetas, boardGrid::clearArrows);
+        } else {
+            boardGrid.setOnCellHover(null, boardGrid::clearArrows);
+            boardGrid.clearArrows();
         }
     }
 
+    private final BiConsumer<Integer, Integer> onEnterMostrarSetas = (r, c) -> {
+        if (jogo == null) return;
+        Tabuleiro t = jogo.getTabuleiro();
+        int v = t.getCelula(r, c);
+        if (!isNenufar(v)) { boardGrid.clearArrows(); return; }
+
+        boolean up    = podeEmpurrar(t, r, c, -1, 0);
+        boolean down  = podeEmpurrar(t, r, c, +1, 0);
+        boolean left  = podeEmpurrar(t, r, c, 0, -1);
+        boolean right = podeEmpurrar(t, r, c, 0, +1);
+
+        if (!(up || down || left || right)) { boardGrid.clearArrows(); return; }
+
+        boardGrid.showArrows(r, c, up, down, left, right, dir -> {
+            controller.moverNenufarDirecao(r, c, dir);
+            boardGrid.clearArrows();
+        });
+    };
+
+    private boolean isNenufar(int v) {
+        return v == 3 || v == 4 || v == 5 || v == 6 || v == 7 || v == 8;
+    }
+
+    /**
+     * Habilita seta apenas quando o movimento de 1 passo é possível:
+     * - vizinha imediata é água (0) -> OK
+     * - senão, existe um bloco contíguo de não-água e logo APÓS esse bloco há água dentro do tabuleiro -> OK
+     */
+    private boolean podeEmpurrar(Tabuleiro t, int r, int c, int dr, int dc) {
+        int nr = r + dr, nc = c + dc;
+        if (!t.posicaoValida(nr, nc)) return false;
+
+        // vizinha é água -> movimento simples de 1 casa
+        if (t.getCelula(nr, nc) == 0) return true;
+
+        // há bloco contíguo: varrer até a primeira água
+        int rr = nr, cc = nc;
+        while (t.posicaoValida(rr, cc) && t.getCelula(rr, cc) != 0) {
+            rr += dr; cc += dc;
+        }
+        // rr,cc é a célula após o bloco
+        if (!t.posicaoValida(rr, cc)) return false;      // sairia da grade
+        return t.getCelula(rr, cc) == 0;                 // precisa haver água logo após o bloco
+    }
+
+    // ----------------------- mover sapo (toggle) -----------------------
+    private void handleMoverSapoClick(int r, int c) {
+        Tabuleiro t = jogo.getTabuleiro();
+        if (sapoOrigR == null) {
+            int v = t.getCelula(r, c);
+            if (v == 5 || v == 6) {
+                sapoOrigR = r; sapoOrigC = c;
+                lblMsg.setText("Selecione um nenúfar claro vazio para destino.");
+            } else {
+                mostrarErro("Clique primeiro num sapo para escolher a origem.");
+            }
+            return;
+        }
+        // destino
+        controller.moverSapo(sapoOrigR, sapoOrigC, r, c);
+        sapoOrigR = sapoOrigC = null; // limpa seleção sempre (evita travar)
+    }
+
+    // ----------------------- empate: colocar sapos -----------------------
+    private void handleEmpateClick(int r, int c) {
+        if (empateProximaCor == null) {
+            empateProximaCor = CorJogador.VERMELHO; // segurança
+        }
+        controller.moverSapoEmpate(r, c, empateProximaCor);
+        // Após a atualização, atualizarTela calculará novamente a próxima cor
+    }
+
+    /** Inspeciona o tabuleiro para decidir quem é o próximo a ser colocado no empate. */
+    private CorJogador detectarProximaCorEmpate(Tabuleiro t) {
+        boolean temVermelho = false, temAmarelo = false;
+        for (int i = 0; i < 5; i++) {
+            for (int j = 0; j < 5; j++) {
+                int v = t.getCelula(i, j);
+                if (v == 5) temVermelho = true;
+                if (v == 6) temAmarelo = true;
+            }
+        }
+        if (!temVermelho) return CorJogador.VERMELHO;
+        if (!temAmarelo)   return CorJogador.AMARELO;
+        return null; // os dois já estão no tabuleiro (fase deverá avançar)
+    }
+
+    // ----------------------- render mãos / score -----------------------
     private void renderMaos(JogoHaruIchiban jogo) {
         cardsVermelho.clear();
         cardsAmarelo.clear();
         maoVermelhoBox.getChildren().setAll(renderMao(jogo.getJogadorVermelho(), true));
         maoAmareloBox.getChildren().setAll(renderMao(jogo.getJogadorAmarelo(), false));
-        updateSelectionStyles(true, idxFlorVermelho);
+        updateSelectionStyles(true,  idxFlorVermelho);
         updateSelectionStyles(false, idxFlorAmarelo);
     }
 
     private Node[] renderMao(Jogador jogador, boolean vermelho) {
         List<Flor> mao = jogador.getMao();
         Node[] nos = new Node[mao.size()];
-
         for (int i = 0; i < mao.size(); i++) {
             Flor f = mao.get(i);
 
-            // Imagens: virada (sem número) e numerada
-            Node imgPlain = SpriteFactory.get().flowerGeneric(f.getCor());
+            Node imgPlain  = SpriteFactory.get().flowerGeneric(f.getCor());
             Node imgNumber = SpriteFactory.get().flowerNumbered(f.getCor(), f.getValor());
-
             StackPane holder = new StackPane(imgPlain, imgNumber);
             holder.setPrefSize(100, 100);
-            imgNumber.setVisible(false); // começa "virada"
+            imgNumber.setVisible(false);
 
-            // Ações do cartão
             ToggleButton btnVer = new ToggleButton("Ver");
             btnVer.setOnAction(e -> {
                 boolean show = btnVer.isSelected();
@@ -318,13 +368,8 @@ public class FxGameView implements GameView {
             Button btnSel = new Button("Selecionar");
             final int idx = i;
             btnSel.setOnAction(e -> {
-                if (vermelho) {
-                    idxFlorVermelho = idx;
-                    updateSelectionStyles(true, idxFlorVermelho);
-                } else {
-                    idxFlorAmarelo = idx;
-                    updateSelectionStyles(false, idxFlorAmarelo);
-                }
+                if (vermelho) { idxFlorVermelho = idx; updateSelectionStyles(true, idx); }
+                else          { idxFlorAmarelo  = idx; updateSelectionStyles(false, idx); }
             });
 
             HBox actions = new HBox(6, btnVer, btnSel);
@@ -335,9 +380,7 @@ public class FxGameView implements GameView {
             card.setAlignment(Pos.CENTER);
             card.setStyle(cardStyle(false));
 
-            if (vermelho) cardsVermelho.add(card);
-            else cardsAmarelo.add(card);
-
+            if (vermelho) cardsVermelho.add(card); else cardsAmarelo.add(card);
             nos[i] = card;
         }
         return nos;
@@ -352,105 +395,90 @@ public class FxGameView implements GameView {
     }
 
     private String cardStyle(boolean selected) {
-        if (selected) {
-            return """
-                   -fx-background-color: #ffffff;
-                   -fx-border-color: #2b8a3e;
-                   -fx-border-width: 2;
-                   -fx-border-radius: 10;
-                   -fx-background-radius: 10;
-                   """;
-        }
-        return """
-               -fx-background-color: #ffffff;
-               -fx-border-color: #ddd;
-               -fx-border-width: 1;
-               -fx-border-radius: 10;
-               -fx-background-radius: 10;
-               """;
+        return selected ? """
+            -fx-background-color: #ffffff;
+            -fx-border-color: #2b8a3e;
+            -fx-border-width: 2;
+            -fx-border-radius: 10;
+            -fx-background-radius: 10;
+        """ : """
+            -fx-background-color: #ffffff;
+            -fx-border-color: #ddd;
+            -fx-border-width: 1;
+            -fx-border-radius: 10;
+            -fx-background-radius: 10;
+        """;
     }
 
-    private void handleMoverNenufar(int l, int c) {
-        if (origemL == null) {
-            origemL = l; origemC = c;
-            lblMsg.setText("Origem: (" + l + "," + c + "). Selecione um destino adjacente.");
-        } else {
-            controller.moverNenufar(origemL, origemC, 'l');
-            origemL = origemC = null;
-        }
-    }
-
-    private void handleMoverSapo(int l, int c) {
-        if (origemL == null) {
-            origemL = l; origemC = c;
-            lblMsg.setText("Origem do sapo: (" + l + "," + c + "). Agora clique no destino.");
-        } else {
-            controller.moverSapo(origemL, origemC, l, c);
-            origemL = origemC = null;
-            tglMoverSapo.setSelected(false);
-        }
-    }
-
-    // ---- Pontuação (bolinhas) ----
     private void atualizarScore(VBox box, Jogador j) {
-        box.getChildren().setAll(scoreBox(j));
-    }
-
-    private Node scoreBox(Jogador j) {
         Label titulo = new Label(j.getNome() + " — Pontos: " + j.getPontuacao());
-
         HBox pips = new HBox(6);
         pips.setAlignment(Pos.CENTER_LEFT);
 
         for (int i = 1; i <= 5; i++) {
             Region pip = new Region();
-            pip.setPrefSize(16, 16);
-            pip.setMinSize(16, 16);
-            pip.setMaxSize(16, 16);
-
-            String colorOn  = (j.getCor() == CorJogador.VERMELHO) ? "#d93b53" : "#f2c200";
-            String colorOff = "#e0e0e0";
-
-            boolean filled = i <= j.getPontuacao();
-            pip.setStyle("""
-                -fx-background-color: %s;
-                -fx-background-radius: 999;
-                -fx-border-radius: 999;
-                -fx-border-color: #ccc;
-                """.formatted(filled ? colorOn : colorOff));
-
+            pip.setPrefSize(16,16);
+            String on  = (j.getCor()== CorJogador.VERMELHO) ? "#d93b53" : "#f2c200";
+            String off = "#e0e0e0";
+            pip.setStyle("-fx-background-color:" + (i<=j.getPontuacao()? on : off) +
+                    ";-fx-background-radius:999;-fx-border-radius:999;-fx-border-color:#ccc;");
             pips.getChildren().add(pip);
         }
-
-        VBox box = new VBox(4, titulo, pips);
-        box.setAlignment(Pos.CENTER_LEFT);
-        box.setPadding(new Insets(6, 0, 0, 0));
-        return box;
+        box.getChildren().setAll(new VBox(4, titulo, pips));
     }
 
-    // ---- Abrir PDF das regras ----
+    // ---------- novo jogo + regras ----------
+    public void solicitarNovoJogo(GameController controller) {
+        TextInputDialog d1 = new TextInputDialog("Vermelho");
+        d1.setHeaderText("Nome do Jogador Vermelho");
+        String nV = d1.showAndWait().orElse("Vermelho");
+
+        TextInputDialog d2 = new TextInputDialog("Amarelo");
+        d2.setHeaderText("Nome do Jogador Amarelo");
+        String nA = d2.showAndWait().orElse("Amarelo");
+
+        controller.iniciarNovoJogo(nV, nA);
+        idxFlorVermelho = idxFlorAmarelo = -1;
+        tglMoverSapo.setSelected(false);
+        sapoOrigR = sapoOrigC = null;
+    }
+
     private void abrirPdfRegras() {
         try {
             URL url = getClass().getResource("/haruichiban/regras/regras.pdf");
             if (url != null) {
-                // Tenta abrir diretamente (browser/visualizador padrão)
                 hostServices.showDocument(url.toExternalForm());
                 return;
             }
-            mostrarErro("Arquivo de regras não encontrado nos recursos.");
+            mostrarErro("Regras não encontradas nos recursos.");
         } catch (Exception ex) {
-            // Fallback: extrair para TEMP e abrir
-            try (InputStream in = getClass().getResourceAsStream("/haruichiban/regras/regras.pdf")) {
-                if (in == null) throw new IllegalStateException("Regras não localizadas.");
-                File tmp = File.createTempFile("haru-ichiban-regras", ".pdf");
-                tmp.deleteOnExit();
-                try (FileOutputStream out = new FileOutputStream(tmp)) {
-                    in.transferTo(out);
-                }
-                hostServices.showDocument(tmp.toURI().toString());
-            } catch (Exception e2) {
-                mostrarErro("Não foi possível abrir as regras: " + e2.getMessage());
-            }
+            mostrarErro("Não foi possível abrir as regras: " + ex.getMessage());
+        }
+    }
+
+    // ---------- util ----------
+    private void habilitarAcoesPorFase(FaseJogo fase) {
+        boolean selecaoFlor = (fase == FaseJogo.SELECAO_FLOR);
+        btnConfirmarSelecao.setDisable(!selecaoFlor);
+
+        btnFloracaoJunior.setDisable(fase != FaseJogo.FLORACAO_JUNIOR);
+
+        // Mostrar/esconder UI do empate
+        empateBox.setVisible(fase == FaseJogo.EMPATE_COAXAR);
+        empateBox.setManaged(fase == FaseJogo.EMPATE_COAXAR);
+
+        // Botão "Nova Rodada" só aparece no FIM_RODADA
+        boolean mostrarNovaRodada = (fase == FaseJogo.FIM_RODADA);
+        btnNovaRodada.setVisible(mostrarNovaRodada);
+        btnNovaRodada.setManaged(mostrarNovaRodada);
+        btnNovaRodada.setDisable(!mostrarNovaRodada);
+
+        // Toggle mover sapo não faz sentido durante EMPATE_COAXAR ou MOVER_SAPOS_EMPATE
+        boolean podeMoverSapo = (fase != FaseJogo.EMPATE_COAXAR && fase != FaseJogo.MOVER_SAPOS_EMPATE && fase != FaseJogo.FIM_RODADA);
+        tglMoverSapo.setDisable(!podeMoverSapo);
+        if (!podeMoverSapo) {
+            tglMoverSapo.setSelected(false);
+            sapoOrigR = sapoOrigC = null;
         }
     }
 }

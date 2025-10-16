@@ -18,7 +18,6 @@ import javafx.scene.layout.StackPane;
  * - carrega imagens 1x (cache) de /haruichiban/img/
  */
 public class SpriteFactory {
-
     private static final SpriteFactory INSTANCE = new SpriteFactory();
     public static SpriteFactory get() { return INSTANCE; }
 
@@ -36,7 +35,6 @@ public class SpriteFactory {
         StackPane s = new StackPane();
         s.setPrefSize(TILE_SIZE, TILE_SIZE);
         s.setAlignment(Pos.CENTER);
-
         switch (code) {
             case 0 -> s.getChildren().add(img("agua"));
             case 3 -> s.getChildren().add(img("nenufar_claro"));
@@ -51,7 +49,6 @@ public class SpriteFactory {
     }
 
     // ---------- API para as mãos ----------
-
     /** Flor sem número (lado “virado”). */
     public Node flowerGeneric(CorJogador cor) {
         return img(cor == CorJogador.VERMELHO ? "flor_vermelha" : "flor_amarela");
@@ -66,7 +63,6 @@ public class SpriteFactory {
     }
 
     // ---------- helpers de imagem/caching ----------
-
     private ImageView img(String name) {
         Image image = cache.computeIfAbsent(name, this::load);
         ImageView iv = new ImageView(image);

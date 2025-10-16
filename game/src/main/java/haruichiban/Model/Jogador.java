@@ -1,92 +1,94 @@
 package haruichiban.Model;
 
-
-import haruichiban.Model.enums.CorJogador;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import haruichiban.Model.enums.CorJogador;
+
+/**
+ * Mantém a mão do jogador e um "estoque" de valores restantes para a rodada.
+ * - Na nova rodada o estoque é {1..8}, embaralhado.
+ * - Compra 3 para a mão.
+ * - Ao longo dos turnos, repõe a mão até 3 usando SOMENTE os valores
+ *   restantes no estoque (logo, sem repetições na rodada).
+ */
 public class Jogador {
-    private String nome;
-    private CorJogador cor;
-    private List<Flor> mao;
-    private List<Flor> deck;
-    private Flor florSelecionada;
+
+    private final String nome;
+    private final CorJogador cor;
     private int pontuacao;
-    
+
+    private final List<Flor> mao = new ArrayList<>();
+    private Flor florSelecionada;
+
+    // Valores disponíveis nesta rodada (sem repetição)
+    private final List<Integer> estoqueValores = new ArrayList<>();
+
     public Jogador(String nome, CorJogador cor) {
         this.nome = nome;
         this.cor = cor;
         this.pontuacao = 0;
-        this.mao = new ArrayList<>();
-        this.deck = new ArrayList<>();
-        inicializarDeck();
-        comprarMao();
+        resetarParaNovaRodada();
     }
-    
-    private void inicializarDeck() {
-        deck.clear();
-        for (int i = 1; i <= 8; i++) {
-            deck.add(new Flor(i, cor));
-        }
-        Collections.shuffle(deck);
-    }
-    
-    private void comprarMao() {
+
+    /** Início de rodada: recria o estoque {1..8} e compra 3. */
+    public void resetarParaNovaRodada() {
         mao.clear();
-        for (int i = 0; i < 3 && !deck.isEmpty(); i++) {
-            mao.add(deck.remove(0));
+        florSelecionada = null;
+
+        estoqueValores.clear();
+        for (int v = 1; v <= 8; v++) {
+            estoqueValores.add(v);
+        }
+        Collections.shuffle(estoqueValores);
+
+        comprarAte(3);
+    }
+
+    /** Entre turnos: completa a mão até 3 flores, sem repetir valores. */
+    public void reporMaoAteTres() {
+        comprarAte(3);
+    }
+
+    private void comprarAte(int limite) {
+        while (mao.size() < limite && !estoqueValores.isEmpty()) {
+            int valor = estoqueValores.remove(0);
+            mao.add(new Flor(valor, cor));
         }
     }
-    
+
     public boolean selecionarFlor(int indice) {
-        if (indice >= 0 && indice < mao.size()) {
-            florSelecionada = mao.get(indice);
-            return true;
-        }
-        return false;
+        if (indice < 0 || indice >= mao.size()) return false;
+        florSelecionada = mao.get(indice);
+        return true;
     }
-    
+
     public void usarFlorSelecionada() {
         if (florSelecionada != null) {
             mao.remove(florSelecionada);
-            
-            if (!deck.isEmpty() && mao.size() < 3) {
-                mao.add(deck.remove(0));
-            }
-            
             florSelecionada = null;
         }
     }
-    
-    public void resetarParaNovaRodada() {
-        // Resetar deck completo apenas no início de nova rodada
-        inicializarDeck();
-        comprarMao();
-        florSelecionada = null;
-    }
-    
+
     public boolean temFloresDisponiveis() {
-        return !mao.isEmpty() || !deck.isEmpty();
+        return !mao.isEmpty();
     }
-    
-    public int getFloresRestantes() {
-        return mao.size() + deck.size();
+
+    public void adicionarPontos(int p) {
+        pontuacao += p;
+        if (pontuacao < 0) pontuacao = 0;
+        if (pontuacao > 5) pontuacao = 5;
     }
-    
-    public void adicionarPontos(int pontos) {
-        this.pontuacao += pontos;
-    }
-    
+
     public boolean venceu() {
         return pontuacao >= 5;
     }
-    
+
     // Getters
     public String getNome() { return nome; }
     public CorJogador getCor() { return cor; }
-    public List<Flor> getMao() { return new ArrayList<>(mao); }
-    public Flor getFlorSelecionada() { return florSelecionada; }
     public int getPontuacao() { return pontuacao; }
-    public int getTamanhoMao() { return mao.size(); }
+    public List<Flor> getMao() { return Collections.unmodifiableList(mao); }
+    public Flor getFlorSelecionada() { return florSelecionada; }
 }

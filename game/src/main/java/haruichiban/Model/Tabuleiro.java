@@ -2,6 +2,7 @@ package haruichiban.Model;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import haruichiban.Model.enums.CorJogador;
 import haruichiban.Model.enums.TipoPadrao;
 
@@ -139,91 +140,83 @@ public class Tabuleiro {
         return true;
     }
 
-    // Move o nenúfar se estiver adjacente (cima, baixo, esquerda, direita)
+    /**
+     * VERSÃO CORRETA DO "VENTO DA PRIMAVERA"
+     *
+     * Move um único nenúfar 1 casa OU empurra o bloco contíguo de nenúfares exatamente
+     * 1 casa na direção indicada, desde que exista uma célula de água (0) imediatamente
+     * APÓS a ponta do bloco. Nunca desliza até a borda.
+     */
     public boolean moverNenufar(int linhaOrigem, int colunaOrigem, char direcaoMovimento) {
-
-        int nenufar = getCelula(linhaOrigem, colunaOrigem);
-
+        int dr = 0, dc = 0;
         switch (direcaoMovimento) {
-            case 'D': // Direita
-                if (!posicaoValida(linhaOrigem, colunaOrigem + 1)) {
-                    return false;
-                }
+            case 'D' -> { dr = 0; dc = +1; }  // direita
+            case 'E' -> { dr = 0; dc = -1; }  // esquerda
+            case 'C' -> { dr = -1; dc = 0; }  // cima
+            case 'B' -> { dr = +1; dc = 0; }  // baixo
+            default -> { return false; }
+        }
 
-                if (getCelula(linhaOrigem, colunaOrigem + 1) == 0) {
-                    setCelula(linhaOrigem, colunaOrigem + 1, nenufar);
-                    setCelula(linhaOrigem, colunaOrigem, 0);
-                    return true;
-                } else {
-                    if (moverNenufar(linhaOrigem, colunaOrigem + 1, direcaoMovimento)) {
-                        setCelula(linhaOrigem, colunaOrigem + 1, nenufar);
-                        setCelula(linhaOrigem, colunaOrigem, 0);
-                        return true;
-                    } else {
-                        return false; // Não conseguiu mover
-                    }
-                }
+        if (!posicaoValida(linhaOrigem, colunaOrigem)) return false;
+        // origem não pode ser água
+        if (getCelula(linhaOrigem, colunaOrigem) == 0) return false;
 
-            case 'E': // Esquerda
-                if (!posicaoValida(linhaOrigem, colunaOrigem - 1)) {
-                    return false;
-                }
+        int nr = linhaOrigem + dr, nc = colunaOrigem + dc;
+        if (!posicaoValida(nr, nc)) return false;
 
-                if (getCelula(linhaOrigem, colunaOrigem - 1) == 0) {
-                    setCelula(linhaOrigem, colunaOrigem - 1, nenufar);
-                    setCelula(linhaOrigem, colunaOrigem, 0);
-                    return true;
-                } else {
-                    if (moverNenufar(linhaOrigem, colunaOrigem - 1, direcaoMovimento)) {
-                        setCelula(linhaOrigem, colunaOrigem - 1, nenufar);
-                        setCelula(linhaOrigem, colunaOrigem, 0);
-                        return true;
-                    } else {
-                        return false; // Não conseguiu mover
-                    }
-                }
+        // 1) Se a casa vizinha imediata é água -> move só 1 casa
+        if (getCelula(nr, nc) == 0) {
+            int val = getCelula(linhaOrigem, colunaOrigem);
+            setCelula(nr, nc, val);
+            setCelula(linhaOrigem, colunaOrigem, 0);
+            return true;
+        }
 
-            case 'C': // Cima (FRENTE) - DIMINUI LINHA
-                if (!posicaoValida(linhaOrigem - 1, colunaOrigem)) { // ✅ CORRIGIDO!
-                    return false;
-                }
+        // 2) Caso contrário, há um bloco contíguo: encontrar a "ponta" (última não-água)
+        int tailR = linhaOrigem, tailC = colunaOrigem;
+        int rr = nr, cc = nc;
+        while (posicaoValida(rr, cc) && getCelula(rr, cc) != 0) {
+            tailR = rr; tailC = cc;
+            rr += dr; cc += dc;
+        }
 
-                if (getCelula(linhaOrigem - 1, colunaOrigem) == 0) { // ✅ CORRIGIDO!
-                    setCelula(linhaOrigem - 1, colunaOrigem, nenufar);
-                    setCelula(linhaOrigem, colunaOrigem, 0);
-                    return true;
-                } else {
-                    if (moverNenufar(linhaOrigem - 1, colunaOrigem, direcaoMovimento)) {
-                        setCelula(linhaOrigem - 1, colunaOrigem, nenufar);
-                        setCelula(linhaOrigem, colunaOrigem, 0);
-                        return true;
-                    } else {
-                        return false;
-                    }
-                }
+        // rr,cc é a primeira célula APÓS o bloco (pode ser fora da grade ou água)
+        if (!posicaoValida(rr, cc)) return false;           // empurraria para fora -> inválido
+        if (getCelula(rr, cc) != 0) return false;           // não tem água logo após o bloco -> inválido
 
-            case 'B': // Baixo (TRÁS) - AUMENTA LINHA
-                if (!posicaoValida(linhaOrigem + 1, colunaOrigem)) {
-                    return false;
-                }
+        // 3) Shift do bloco inteirinho 1 casa (da ponta para trás)
+        int curR = tailR, curC = tailC;
+        setCelula(rr, cc, getCelula(curR, curC));           // ponta -> água
+        while (!(curR == linhaOrigem && curC == colunaOrigem)) {
+            int prevR = curR - dr, prevC = curC - dc;
+            setCelula(curR, curC, getCelula(prevR, prevC)); // anterior -> atual
+            curR = prevR; curC = prevC;
+        }
+        setCelula(linhaOrigem, colunaOrigem, 0);            // libera origem
+        return true;
+    }
 
-                if (getCelula(linhaOrigem + 1, colunaOrigem) == 0) {
-                    setCelula(linhaOrigem + 1, colunaOrigem, nenufar);
-                    setCelula(linhaOrigem, colunaOrigem, 0);
-                    return true;
-                } else {
-                    if (moverNenufar(linhaOrigem + 1, colunaOrigem, direcaoMovimento)) {
-                        setCelula(linhaOrigem + 1, colunaOrigem, nenufar);
-                        setCelula(linhaOrigem, colunaOrigem, 0);
-                        return true;
-                    } else {
-                        return false;
-                    }
-                }
-            default:
-                break;
+    // ---------- utilidades já existentes ----------
+    private boolean existeAguaAdiante(int r, int c, int dr, int dc) {
+        int rr = r + dr, cc = c + dc;
+        while (posicaoValida(rr, cc)) {
+            if (getCelula(rr, cc) == 0) return true;
+            rr += dr; cc += dc;
         }
         return false;
+    }
+
+    private void empurrarUmPasso(int r, int c, int dr, int dc) {
+        int nr = r + dr, nc = c + dc;
+        if (!posicaoValida(nr, nc)) return; // segurança
+
+        if (getCelula(nr, nc) != 0) {
+            empurrarUmPasso(nr, nc, dr, dc);
+        }
+
+        int atual = getCelula(r, c);
+        setCelula(nr, nc, atual);
+        setCelula(r, c, 0);
     }
 
     public void virarTodosNenufaresParaClaro() {
@@ -333,6 +326,7 @@ public class Tabuleiro {
                     valor == tabuleiro[i][3]) {
 
                 CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
+
                 resultado.setEncontrou(true);
                 resultado.setCorVencedor(cor);
                 resultado.setTipo(TipoPadrao.LINHA_HORIZONTAL_4);
@@ -350,7 +344,7 @@ public class Tabuleiro {
                     valor == tabuleiro[i][4]) {
 
                 CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
-               
+
                 resultado.setEncontrou(true);
                 resultado.setCorVencedor(cor);
                 resultado.setTipo(TipoPadrao.LINHA_HORIZONTAL_4);
@@ -408,7 +402,7 @@ public class Tabuleiro {
                     valor == tabuleiro[4][i]) {
 
                 CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
-               
+
                 resultado.setEncontrou(true);
                 resultado.setCorVencedor(cor);
                 resultado.setTipo(TipoPadrao.LINHA_VERTICAL_4);
@@ -433,16 +427,16 @@ public class Tabuleiro {
             valor == tabuleiro[2][2] &&
             valor == tabuleiro[3][3] &&
             valor == tabuleiro[4][4]) {
-            
+
             CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
-            
+
             resultado.setEncontrou(true);
             resultado.setCorVencedor(cor);
             resultado.setTipo(TipoPadrao.LINHA_5);
             resultado.setPontuacao(5);
             return resultado;
         }
-        
+
         // Diagonal secundária ↙ - 5 flores
         valor = tabuleiro[0][4];
         if ((valor == 7 || valor == 8) &&
@@ -450,7 +444,7 @@ public class Tabuleiro {
             valor == tabuleiro[2][2] &&
             valor == tabuleiro[3][1] &&
             valor == tabuleiro[4][0]) {
-            
+
             CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
             resultado.setEncontrou(true);
             resultado.setCorVencedor(cor);
@@ -458,14 +452,14 @@ public class Tabuleiro {
             resultado.setPontuacao(5);
             return resultado;
         }
-        
+
         // Diagonal principal ↘ - 4 flores (0,0 a 3,3)
         valor = tabuleiro[0][0];
         if ((valor == 7 || valor == 8) &&
             valor == tabuleiro[1][1] &&
             valor == tabuleiro[2][2] &&
             valor == tabuleiro[3][3]) {
-            
+
             CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
             resultado.setEncontrou(true);
             resultado.setCorVencedor(cor);
@@ -473,14 +467,14 @@ public class Tabuleiro {
             resultado.setPontuacao(3);
             return resultado;
         }
-        
+
         // Diagonal principal ↘ - 4 flores (1,1 a 4,4)
         valor = tabuleiro[1][1];
         if ((valor == 7 || valor == 8) &&
             valor == tabuleiro[2][2] &&
             valor == tabuleiro[3][3] &&
             valor == tabuleiro[4][4]) {
-            
+
             CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
             resultado.setEncontrou(true);
             resultado.setCorVencedor(cor);
@@ -488,14 +482,14 @@ public class Tabuleiro {
             resultado.setPontuacao(3);
             return resultado;
         }
-        
+
         // Diagonal secundária ↙ - 4 flores (0,4 a 3,1)
         valor = tabuleiro[0][4];
         if ((valor == 7 || valor == 8) &&
             valor == tabuleiro[1][3] &&
             valor == tabuleiro[2][2] &&
             valor == tabuleiro[3][1]) {
-            
+
             CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
             resultado.setEncontrou(true);
             resultado.setCorVencedor(cor);
@@ -503,14 +497,14 @@ public class Tabuleiro {
             resultado.setPontuacao(3);
             return resultado;
         }
-        
+
         // Diagonal secundária ↙ - 4 flores (1,3 a 4,0)
         valor = tabuleiro[1][3];
         if ((valor == 7 || valor == 8) &&
             valor == tabuleiro[2][2] &&
             valor == tabuleiro[3][1] &&
             valor == tabuleiro[4][0]) {
-            
+
             CorJogador cor = (valor == 7) ? CorJogador.VERMELHO : CorJogador.AMARELO;
             resultado.setEncontrou(true);
             resultado.setCorVencedor(cor);
@@ -518,54 +512,64 @@ public class Tabuleiro {
             resultado.setPontuacao(3);
             return resultado;
         }
-        
+
         return resultado;
     }
 
     public ResultadoPadrao verificarPadroes() {
         // Prioridade: Linha de 5 (5 pts) > Diagonal 4 (3 pts) > Linha 4 (2 pts) > Quadrado (1 pt)
-        
+
         // Verificar linhas de 5 (horizontal e vertical)
         ResultadoPadrao resultado = encontrarLinhaHorizontal();
         if (resultado.isEncontrou() && resultado.getPontuacao() == 5) {
             return resultado;
         }
-        
+
         resultado = encontrarLinhaVertical();
         if (resultado.isEncontrou() && resultado.getPontuacao() == 5) {
             return resultado;
         }
-        
+
         // Verificar diagonal de 5
         resultado = encontrarDiagonal();
         if (resultado.isEncontrou() && resultado.getPontuacao() == 5) {
             return resultado;
         }
-        
+
         // Verificar diagonal de 4 (3 pontos)
         resultado = encontrarDiagonal();
         if (resultado.isEncontrou() && resultado.getPontuacao() == 3) {
             return resultado;
         }
-        
+
         // Verificar linhas de 4 (2 pontos)
         resultado = encontrarLinhaHorizontal();
         if (resultado.isEncontrou() && resultado.getPontuacao() == 2) {
             return resultado;
         }
-        
+
         resultado = encontrarLinhaVertical();
         if (resultado.isEncontrou() && resultado.getPontuacao() == 2) {
             return resultado;
         }
-        
+
         // Verificar quadrado (1 ponto)
         resultado = encontrouQuadradoCompleto();
         if (resultado.isEncontrou()) {
             return resultado;
         }
-        
+
         // Nenhum padrão encontrado
         return new ResultadoPadrao();
+    }
+
+    // ---------- NOVO: usado para evitar travamento na seleção do escuro ----------
+    public boolean existeNenufarClaroVazio() {
+        for (int i = 0; i < 5; i++) {
+            for (int j = 0; j < 5; j++) {
+                if (tabuleiro[i][j] == 3) return true;
+            }
+        }
+        return false;
     }
 }
